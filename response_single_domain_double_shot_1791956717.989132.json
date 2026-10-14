@@ -1,0 +1,99 @@
+{
+  "strategy": "single_domain_double_shot",
+  "prompt_prefix": [
+    "Examples from the pantry database:",
+    "Question: What foods are on shelves in pantry 1?",
+    "SQL: SELECT food_name, quantity FROM shelfs WHERE pantry_id = 1 ORDER BY food_name;",
+    "Question: Which pantries are in Utah?",
+    "SQL: SELECT p.pantry_id FROM pantry p JOIN adress a ON a.address_id = p.address_id WHERE a.state =",
+    "'UT' ORDER BY p.pantry_id;",
+    "",
+    "Target pantry database schema:",
+    "CREATE TABLE adress (",
+    "    address_id INTEGER PRIMARY KEY,",
+    "    street     VARCHAR(255) NOT NULL,",
+    "    state      VARCHAR(50) NOT NULL,",
+    "    city       VARCHAR(100) NOT NULL,",
+    "    zip_code   BIGINT NOT NULL",
+    ");",
+    "",
+    "CREATE TABLE pantry (",
+    "    pantry_id  INTEGER PRIMARY KEY,",
+    "    address_id BIGINT NOT NULL,",
+    "",
+    "    FOREIGN KEY (address_id)",
+    "        REFERENCES adress (address_id)",
+    ");",
+    "",
+    "CREATE TABLE shelfs (",
+    "    shelf_id     INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "",
+    "CREATE TABLE cupboards (",
+    "    cupboard_id  INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "Return exactly one read-only SQLite SELECT query (WITH is allowed). Return SQL only, without",
+    "Markdown. Use the exact target table names."
+  ],
+  "generation_mode": "openai",
+  "model": "gpt-4o",
+  "questionResults": [
+    {
+      "question": "How many pantries are in each city?",
+      "sql": "SELECT a.city, COUNT(p.pantry_id) AS number_of_pantries\nFROM pantry p\nJOIN adress a ON a.address_id = p.address_id\nGROUP BY a.city;",
+      "queryRawResponse": "[('Denver', 1), ('Phoenix', 1), ('Provo', 1)]",
+      "friendlyResponse": "Denver has 1 pantry, Phoenix has 1 pantry, and Provo has 1 pantry.",
+      "error": "None",
+      "columns": [
+        "city",
+        "number_of_pantries"
+      ]
+    },
+    {
+      "question": "What is the total quantity of food in each pantry, including shelves and cupboards?",
+      "sql": "WITH pantry_shelf_totals AS (\n    SELECT pantry_id, SUM(quantity) AS total_shelf_quantity\n    FROM shelfs\n    GROUP BY pantry_id\n),\npantry_cupboard_totals AS (\n    SELECT pantry_id, SUM(quantity) AS total_cupboard_quantity\n    FROM cupboards\n    GROUP BY pantry_id\n)\nSELECT p.pantry_id, \n       COALESCE(pst.total_shelf_quantity, 0) + COALESCE(pct.total_cupboard_quantity, 0) AS total_quantity\nFROM pantry p\nLEFT JOIN pantry_shelf_totals pst ON p.pantry_id = pst.pantry_id\nLEFT JOIN pantry_cupboard_totals pct ON p.pantry_id = pct.pantry_id\nORDER BY p.pantry_id;",
+      "queryRawResponse": "[(1, 21), (2, 11), (3, 10)]",
+      "friendlyResponse": "The total quantity of food in each pantry is:\n\n- Pantry 1: 21\n- Pantry 2: 11\n- Pantry 3: 10",
+      "error": "None",
+      "columns": [
+        "pantry_id",
+        "total_quantity"
+      ]
+    },
+    {
+      "question": "Which foods have a quantity of zero, and in which pantry?",
+      "sql": "SELECT food_name, pantry_id FROM (\n    SELECT pantry_id, food_name FROM shelfs WHERE quantity = 0\n    UNION\n    SELECT pantry_id, food_name FROM cupboards WHERE quantity = 0\n) AS zero_quantity_foods\nORDER BY food_name, pantry_id;",
+      "queryRawResponse": "[('Canned Soup', 3)]",
+      "friendlyResponse": "Canned Soup has a quantity of zero in pantry 3.",
+      "error": "None",
+      "columns": [
+        "food_name",
+        "pantry_id"
+      ]
+    },
+    {
+      "question": "Which pantry has the most food?",
+      "sql": "WITH total_quantities AS (\n    SELECT pantry_id, SUM(quantity) AS total_quantity\n    FROM (\n        SELECT pantry_id, quantity FROM shelfs\n        UNION ALL\n        SELECT pantry_id, quantity FROM cupboards\n    )\n    GROUP BY pantry_id\n)\nSELECT pantry_id\nFROM total_quantities\nORDER BY total_quantity DESC\nLIMIT 1;",
+      "queryRawResponse": "[(1,)]",
+      "friendlyResponse": "The pantry with the most food has the pantry ID: 1.",
+      "error": "None",
+      "columns": [
+        "pantry_id"
+      ]
+    }
+  ]
+}

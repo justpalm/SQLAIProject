@@ -1,0 +1,97 @@
+{
+  "strategy": "zero_shot",
+  "prompt_prefix": [
+    "",
+    "Target pantry database schema:",
+    "CREATE TABLE adress (",
+    "    address_id INTEGER PRIMARY KEY,",
+    "    street     VARCHAR(255) NOT NULL,",
+    "    state      VARCHAR(50) NOT NULL,",
+    "    city       VARCHAR(100) NOT NULL,",
+    "    zip_code   BIGINT NOT NULL",
+    ");",
+    "",
+    "CREATE TABLE pantry (",
+    "    pantry_id  INTEGER PRIMARY KEY,",
+    "    address_id BIGINT NOT NULL,",
+    "",
+    "    FOREIGN KEY (address_id)",
+    "        REFERENCES adress (address_id)",
+    ");",
+    "",
+    "CREATE TABLE shelfs (",
+    "    shelf_id     INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "",
+    "CREATE TABLE cupboards (",
+    "    cupboard_id  INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "Return exactly one read-only SQLite SELECT query (WITH is allowed). Return SQL only, without",
+    "Markdown. Use the exact target table names."
+  ],
+  "generation_mode": "offline_reference",
+  "model": null,
+  "questionResults": [
+    {
+      "question": "How many pantries are in each city?",
+      "sql": "SELECT a.city, COUNT(*) AS pantry_count FROM pantry p JOIN adress a ON a.address_id = p.address_id GROUP BY a.city ORDER BY a.city;",
+      "queryRawResponse": "[('Denver', 1), ('Phoenix', 1), ('Provo', 1)]",
+      "friendlyResponse": "city: Denver, pantry_count: 1; city: Phoenix, pantry_count: 1; city: Provo, pantry_count: 1",
+      "error": "None",
+      "columns": [
+        "city",
+        "pantry_count"
+      ]
+    },
+    {
+      "question": "What is the total quantity of food in each pantry, including shelves and cupboards?",
+      "sql": "WITH inventory AS (SELECT pantry_id, food_name, quantity, best_by_date FROM shelfs UNION ALL SELECT pantry_id, food_name, quantity, best_by_date FROM cupboards) SELECT p.pantry_id, a.city, COALESCE(SUM(i.quantity), 0) AS total_quantity FROM pantry p JOIN adress a ON a.address_id = p.address_id LEFT JOIN inventory i ON i.pantry_id = p.pantry_id GROUP BY p.pantry_id, a.city ORDER BY p.pantry_id;",
+      "queryRawResponse": "[(1, 'Provo', 21), (2, 'Denver', 11), (3, 'Phoenix', 10)]",
+      "friendlyResponse": "pantry_id: 1, city: Provo, total_quantity: 21; pantry_id: 2, city: Denver, total_quantity: 11; pantry_id: 3, city: Phoenix, total_quantity: 10",
+      "error": "None",
+      "columns": [
+        "pantry_id",
+        "city",
+        "total_quantity"
+      ]
+    },
+    {
+      "question": "Which foods have a quantity of zero, and in which pantry?",
+      "sql": "WITH inventory AS (SELECT pantry_id, food_name, quantity, best_by_date FROM shelfs UNION ALL SELECT pantry_id, food_name, quantity, best_by_date FROM cupboards) SELECT pantry_id, food_name, quantity FROM inventory WHERE quantity = 0 ORDER BY pantry_id, food_name;",
+      "queryRawResponse": "[(3, 'Canned Soup', 0)]",
+      "friendlyResponse": "pantry_id: 3, food_name: Canned Soup, quantity: 0",
+      "error": "None",
+      "columns": [
+        "pantry_id",
+        "food_name",
+        "quantity"
+      ]
+    },
+    {
+      "question": "Which pantry has the most food?",
+      "sql": "WITH inventory AS (SELECT pantry_id, food_name, quantity, best_by_date FROM shelfs UNION ALL SELECT pantry_id, food_name, quantity, best_by_date FROM cupboards) SELECT p.pantry_id, a.city, COALESCE(SUM(i.quantity), 0) AS total_quantity FROM pantry p JOIN adress a ON a.address_id = p.address_id LEFT JOIN inventory i ON i.pantry_id = p.pantry_id GROUP BY p.pantry_id, a.city ORDER BY total_quantity DESC, p.pantry_id LIMIT 1;",
+      "queryRawResponse": "[(1, 'Provo', 21)]",
+      "friendlyResponse": "pantry_id: 1, city: Provo, total_quantity: 21",
+      "error": "None",
+      "columns": [
+        "pantry_id",
+        "city",
+        "total_quantity"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,116 @@
+{
+  "strategy": "cross_domain_double_shot",
+  "prompt_prefix": [
+    "Examples from other databases (these tables are NOT in the target database):",
+    "Schema: CREATE TABLE customer (customer_id INTEGER PRIMARY KEY, name TEXT); CREATE TABLE orders",
+    "(order_id INTEGER PRIMARY KEY, customer_id INTEGER, amount REAL);",
+    "Question: Which customers have orders totaling more than 100 dollars?",
+    "SQL: SELECT c.customer_id, c.name, SUM(o.amount) AS total_amount FROM customer c JOIN orders o ON",
+    "o.customer_id = c.customer_id GROUP BY c.customer_id, c.name HAVING SUM(o.amount) > 100 ORDER BY",
+    "c.customer_id;",
+    "Schema: CREATE TABLE book (book_id INTEGER PRIMARY KEY, title TEXT); CREATE TABLE loan (loan_id",
+    "INTEGER PRIMARY KEY, book_id INTEGER, returned_date TEXT);",
+    "Question: Which books have an unreturned loan?",
+    "SQL: SELECT b.book_id, b.title FROM book b WHERE EXISTS (SELECT 1 FROM loan l WHERE l.book_id =",
+    "b.book_id AND l.returned_date IS NULL) ORDER BY b.book_id;",
+    "",
+    "Target pantry database schema:",
+    "CREATE TABLE adress (",
+    "    address_id INTEGER PRIMARY KEY,",
+    "    street     VARCHAR(255) NOT NULL,",
+    "    state      VARCHAR(50) NOT NULL,",
+    "    city       VARCHAR(100) NOT NULL,",
+    "    zip_code   BIGINT NOT NULL",
+    ");",
+    "",
+    "CREATE TABLE pantry (",
+    "    pantry_id  INTEGER PRIMARY KEY,",
+    "    address_id BIGINT NOT NULL,",
+    "",
+    "    FOREIGN KEY (address_id)",
+    "        REFERENCES adress (address_id)",
+    ");",
+    "",
+    "CREATE TABLE shelfs (",
+    "    shelf_id     INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "",
+    "CREATE TABLE cupboards (",
+    "    cupboard_id  INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "Return exactly one read-only SQLite SELECT query (WITH is allowed). Return SQL only, without",
+    "Markdown. Use the exact target table names."
+  ],
+  "generation_mode": "openai",
+  "model": "gpt-4o",
+  "questionResults": [
+    {
+      "question": "How many pantries are in each city?",
+      "sql": "SELECT a.city, COUNT(p.pantry_id) AS pantry_count\nFROM pantry p\nJOIN adress a ON p.address_id = a.address_id\nGROUP BY a.city;",
+      "queryRawResponse": "[('Denver', 1), ('Phoenix', 1), ('Provo', 1)]",
+      "friendlyResponse": "Denver: 1 pantry, Phoenix: 1 pantry, Provo: 1 pantry.",
+      "error": "None",
+      "columns": [
+        "city",
+        "pantry_count"
+      ]
+    },
+    {
+      "question": "What is the total quantity of food in each pantry, including shelves and cupboards?",
+      "sql": "SELECT p.pantry_id, SUM(s.quantity + c.quantity) AS total_quantity\nFROM pantry p\nLEFT JOIN shelfs s ON s.pantry_id = p.pantry_id\nLEFT JOIN cupboards c ON c.pantry_id = p.pantry_id\nGROUP BY p.pantry_id\nORDER BY p.pantry_id;",
+      "queryRawResponse": "[(1, 47), (2, 22), (3, 20)]",
+      "friendlyResponse": "Pantry 1 has a total quantity of 47. Pantry 2 has a total quantity of 22. Pantry 3 has a total quantity of 20.",
+      "error": "None",
+      "columns": [
+        "pantry_id",
+        "total_quantity"
+      ]
+    },
+    {
+      "question": "Which foods have a quantity of zero, and in which pantry?",
+      "sql": "",
+      "queryRawResponse": "",
+      "friendlyResponse": "",
+      "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-ZlTSRFzF1eTGjRGJlOJqHNhl on requests per day (RPD): Limit 50, Used 50, Requested 1. Please try again in 28m48s. Visit https://platform.openai.com/account/rate-limits to learn more. You can increase your rate limit by adding a payment method to your account at https://platform.openai.com/account/billing.', 'type': 'requests', 'param': None, 'code': 'rate_limit_exceeded'}}",
+      "columns": []
+    },
+    {
+      "question": "Which foods have no best-by date?",
+      "sql": "",
+      "queryRawResponse": "",
+      "friendlyResponse": "",
+      "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-ZlTSRFzF1eTGjRGJlOJqHNhl on requests per day (RPD): Limit 50, Used 50, Requested 1. Please try again in 28m48s. Visit https://platform.openai.com/account/rate-limits to learn more. You can increase your rate limit by adding a payment method to your account at https://platform.openai.com/account/billing.', 'type': 'requests', 'param': None, 'code': 'rate_limit_exceeded'}}",
+      "columns": []
+    },
+    {
+      "question": "Which in-stock foods have a best-by date before March 1, 2027?",
+      "sql": "",
+      "queryRawResponse": "",
+      "friendlyResponse": "",
+      "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-ZlTSRFzF1eTGjRGJlOJqHNhl on requests per day (RPD): Limit 50, Used 50, Requested 1. Please try again in 28m48s. Visit https://platform.openai.com/account/rate-limits to learn more. You can increase your rate limit by adding a payment method to your account at https://platform.openai.com/account/billing.', 'type': 'requests', 'param': None, 'code': 'rate_limit_exceeded'}}",
+      "columns": []
+    },
+    {
+      "question": "Which pantries have more than 10 total units of food?",
+      "sql": "",
+      "queryRawResponse": "",
+      "friendlyResponse": "",
+      "error": "Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-4o in organization org-ZlTSRFzF1eTGjRGJlOJqHNhl on requests per day (RPD): Limit 50, Used 50, Requested 1. Please try again in 28m48s. Visit https://platform.openai.com/account/rate-limits to learn more. You can increase your rate limit by adding a payment method to your account at https://platform.openai.com/account/billing.', 'type': 'requests', 'param': None, 'code': 'rate_limit_exceeded'}}",
+      "columns": []
+    }
+  ]
+}

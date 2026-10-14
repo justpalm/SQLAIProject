@@ -1,0 +1,111 @@
+{
+  "strategy": "zero_shot",
+  "prompt_prefix": [
+    "",
+    "Target pantry database schema:",
+    "CREATE TABLE adress (",
+    "    address_id INTEGER PRIMARY KEY,",
+    "    street     VARCHAR(255) NOT NULL,",
+    "    state      VARCHAR(50) NOT NULL,",
+    "    city       VARCHAR(100) NOT NULL,",
+    "    zip_code   BIGINT NOT NULL",
+    ");",
+    "",
+    "CREATE TABLE pantry (",
+    "    pantry_id  INTEGER PRIMARY KEY,",
+    "    address_id BIGINT NOT NULL,",
+    "",
+    "    FOREIGN KEY (address_id)",
+    "        REFERENCES adress (address_id)",
+    ");",
+    "",
+    "CREATE TABLE shelfs (",
+    "    shelf_id     INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "",
+    "CREATE TABLE cupboards (",
+    "    cupboard_id  INTEGER PRIMARY KEY,",
+    "    pantry_id    BIGINT NOT NULL,",
+    "    food_name    VARCHAR(255) NOT NULL,",
+    "    quantity     BIGINT NOT NULL CHECK (quantity >= 0),",
+    "    best_by_date DATE NULL,",
+    "",
+    "    FOREIGN KEY (pantry_id)",
+    "        REFERENCES pantry (pantry_id)",
+    ");",
+    "Return exactly one read-only SQLite SELECT query (WITH is allowed). Return SQL only, without",
+    "Markdown. Use the exact target table names."
+  ],
+  "generation_mode": "openai",
+  "model": "gpt-4o",
+  "questionResults": [
+    {
+      "question": "How many pantries are in each city?",
+      "sql": "SELECT ad.city, COUNT(p.pantry_id) AS pantry_count\nFROM pantry p\nJOIN adress ad ON p.address_id = ad.address_id\nGROUP BY ad.city;",
+      "queryRawResponse": "[('Denver', 1), ('Phoenix', 1), ('Provo', 1)]",
+      "friendlyResponse": "Denver has 1 pantry, Phoenix has 1 pantry, and Provo has 1 pantry.",
+      "error": "None",
+      "columns": [
+        "city",
+        "pantry_count"
+      ]
+    },
+    {
+      "question": "What is the total quantity of food in each pantry, including shelves and cupboards?",
+      "sql": "WITH combined_food AS (\n    SELECT pantry_id, SUM(quantity) AS total_quantity\n    FROM (\n        SELECT pantry_id, quantity FROM shelfs\n        UNION ALL\n        SELECT pantry_id, quantity FROM cupboards\n    ) AS all_storage\n    GROUP BY pantry_id\n)\nSELECT pantry.pantry_id, COALESCE(combined_food.total_quantity, 0) AS total_quantity\nFROM pantry\nLEFT JOIN combined_food ON pantry.pantry_id = combined_food.pantry_id;",
+      "queryRawResponse": "[(1, 21), (2, 11), (3, 10)]",
+      "friendlyResponse": "The total quantity of food in each pantry is as follows:\n- Pantry 1: 21\n- Pantry 2: 11\n- Pantry 3: 10",
+      "error": "None",
+      "columns": [
+        "pantry_id",
+        "total_quantity"
+      ]
+    },
+    {
+      "question": "Which foods have a quantity of zero, and in which pantry?",
+      "sql": "WITH zero_quantity_shelfs AS (\n    SELECT pantry_id, food_name\n    FROM shelfs\n    WHERE quantity = 0\n),\nzero_quantity_cupboards AS (\n    SELECT pantry_id, food_name\n    FROM cupboards\n    WHERE quantity = 0\n)\nSELECT food_name, pantry_id\nFROM zero_quantity_shelfs\nUNION\nSELECT food_name, pantry_id\nFROM zero_quantity_cupboards;",
+      "queryRawResponse": "[('Canned Soup', 3)]",
+      "friendlyResponse": "The food \"Canned Soup\" has a quantity of zero in pantry 3.",
+      "error": "None",
+      "columns": [
+        "food_name",
+        "pantry_id"
+      ]
+    },
+    {
+      "question": "Which foods have no best-by date?",
+      "sql": "SELECT food_name FROM shelfs WHERE best_by_date IS NULL\nUNION\nSELECT food_name FROM cupboards WHERE best_by_date IS NULL;",
+      "queryRawResponse": "[('Granulated Sugar',), ('Honey',)]",
+      "friendlyResponse": "Granulated Sugar, Honey",
+      "error": "None",
+      "columns": [
+        "food_name"
+      ]
+    },
+    {
+      "question": "Which in-stock foods have a best-by date before March 1, 2027?",
+      "sql": "SELECT food_name, best_by_date\nFROM (\n    SELECT food_name, best_by_date\n    FROM shelfs\n    WHERE best_by_date IS NOT NULL AND best_by_date < '2027-03-01'\n\n    UNION ALL\n\n    SELECT food_name, best_by_date\n    FROM cupboards\n    WHERE best_by_date IS NOT NULL AND best_by_date < '2027-03-01'\n) AS in_stock_foods\nWHERE quantity > 0;",
+      "queryRawResponse": "",
+      "friendlyResponse": "",
+      "error": "no such column: quantity",
+      "columns": []
+    },
+    {
+      "question": "Which pantries have more than 10 total units of food?",
+      "sql": "SELECT p.pantry_id \nFROM pantry p\nJOIN (\n    SELECT pantry_id, SUM(quantity) AS total_quantity\n    FROM (\n        SELECT pantry_id, quantity\n        FROM shelfs\n        UNION ALL\n        SELECT pantry_id, quantity\n        FROM cupboards\n    ) AS combined\n    GROUP BY pantry_id\n) AS pantry_totals\nON p.pantry_id = pantry_totals.pantry_id\nWHERE pantry_totals.total_quantity > 10;",
+      "queryRawResponse": "[(1,), (2,)]",
+      "friendlyResponse": "The pantries with more than 10 total units of food are pantry_id 1 and pantry_id 2.",
+      "error": "None",
+      "columns": [
+        "pantry_id"
+      ]
+    }
+  ]
+}
