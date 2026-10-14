@@ -2,6 +2,9 @@
 
 This project compares zero-shot, single-domain, and cross-domain prompting for questions about food stored in pantries. The Schema itself is not complicated, as I wanted to compare it in a very controlled environment. It seemeed to help with testing very well!
 
+<img width="1260" height="636" alt="image" src="https://github.com/user-attachments/assets/b16cafb0-0dd8-403a-a77d-63ed02129e7a" />
+
+
 ## Files  (description from AI)
 
 - `setup.sql`: SQLite schema. Existing table names `adress` and `shelfs` are retained so queries match your database.
