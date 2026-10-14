@@ -1,6 +1,6 @@
 ﻿# AI SQL Pantry Database
 
-This project compares zero-shot, single-domain, and cross-domain prompting for questions about food stored in pantries.
+This project compares zero-shot, single-domain, and cross-domain prompting for questions about food stored in pantries. The Schema itself is not complicated, as I wanted to compare it in a very controlled environment. It seemeed to help with testing very well!
 
 ## Files  (description from AI)
 
@@ -13,7 +13,7 @@ This project compares zero-shot, single-domain, and cross-domain prompting for q
 
 ## Queries Performances
 
-The queries themselves ran relatively well. Here's a table of how the responses compared against the actual answers
+The queries themselves ran relatively well! Here's a table of how the responses compared against the actual answers
 
 | Question | Zero-shot | Single-domain | Cross-domain |
 |---|---|---|---|
